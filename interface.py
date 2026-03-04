@@ -1,59 +1,61 @@
 import streamlit as st
 
-def aplicar_estilo_v15():
+def configurar_layout():
     st.markdown("""
         <style>
-        .stApp { background-color: #05070a; color: #ffffff; }
-        .bloco-card { background: #0d1117; border: 1px solid #30363d; border-radius: 10px; padding: 15px; margin-bottom: 10px; }
-        .barra-fundo { background: #161b22; height: 10px; border-radius: 5px; margin-bottom: 10px; overflow: hidden; }
-        .barra-preenchimento { height: 100%; transition: 0.5s; }
-        .texto-mini { font-size: 0.7rem; color: #8b949e; text-transform: uppercase; font-weight: bold; }
+        .stApp { background-color: #040508; color: #ffffff; font-family: 'Inter', sans-serif; }
+        .card-auraxis { 
+            background: #0d1117; border: 1px solid #30363d; border-radius: 12px; 
+            padding: 18px; margin-bottom: 15px; position: relative;
+        }
+        .barra-fundo { background: #161b22; height: 12px; border-radius: 6px; margin: 8px 0; overflow: hidden; }
+        .barra-fill { height: 100%; transition: width 0.6s ease; }
+        .texto-identificador { font-size: 0.65rem; color: #8b949e; letter-spacing: 1px; font-weight: 700; }
+        .alerta-operacao { padding: 10px; border-radius: 8px; margin-top: 10px; text-align: center; }
         </style>
     """, unsafe_allow_html=True)
 
-def desenhar_radar(titulo, dados):
+def exibir_modulo(titulo, dados):
     score = dados['score']
     direcao = dados['direcao']
     pressao = dados['pressao']
-    
     cor_corpo = "#3fb950" if direcao > 0 else "#f85149"
-    largura_corpo = min(abs(direcao), 100)
     
     with st.container():
-        # Usamos st.write com componentes HTML injetados via Markdown para evitar erro de texto
+        # HTML encapsulado para garantir visualização e não código
         st.markdown(f"""
-        <div class="bloco-card">
+        <div class="card-auraxis">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:1rem; font-weight:bold;">{titulo}</span>
-                <span style="color:#58a6ff; font-size:0.8rem;">PRONTIDÃO: {score:.1f}%</span>
+                <b style="font-size:1.1rem;">{titulo}</b>
+                <span style="color:#58a6ff; font-family:monospace; font-size:0.9rem;">PRONTIDÃO: {score:.1f}%</span>
             </div>
             
-            <div style="margin-top:10px;">
-                <div class="texto-mini">Direção (Corpo do Candle)</div>
+            <div style="margin-top:15px;">
+                <div class="texto-identificador">DIREÇÃO (CORPO DO CANDLE)</div>
                 <div class="barra-fundo">
-                    <div class="barra-preenchimento" style="width:{largura_corpo}%; background:{cor_corpo};"></div>
+                    <div class="barra-fill" style="width:{min(abs(direcao), 100)}%; background:{cor_corpo};"></div>
                 </div>
                 
-                <div class="texto-mini">Pressão (Pavio/Rejeição)</div>
+                <div class="texto-identificador">PRESSÃO (PAVIO/ABSORÇÃO)</div>
                 <div class="barra-fundo">
-                    <div class="barra-preenchimento" style="width:{pressao}%; background:#f1e05a;"></div>
+                    <div class="barra-fill" style="width:{min(pressao, 100)}%; background:#f1e05a;"></div>
                 </div>
             </div>
         """, unsafe_allow_html=True)
 
         if dados['tipo']:
-            cor_alerta = "#3fb950" if dados['tipo'] == "COMPRA" else "#f85149"
+            cor = "#3fb950" if dados['tipo'] == "COMPRA" else "#f85149"
             st.markdown(f"""
-                <div style="border-top:1px solid #30363d; padding-top:10px;">
-                    <b style="color:{cor_alerta}; font-size:1.1rem;">{dados['tipo']} ATIVA</b><br>
-                    <code style="color:#58a6ff; font-size:0.8rem;">ZONA: {dados['z_inf']:.5f} — {dados['z_sup']:.5f}</code>
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
-                        <div><span class="texto-mini" style="color:#3fb950;">LUCRO (TP)</span><br><b>{dados['tp'][0]:.5f}</b><br><b>{dados['tp'][1]:.5f}</b></div>
-                        <div><span class="texto-mini" style="color:#f85149;">RISCO (SL)</span><br><b>{dados['sl'][0]:.5f}</b><br><b>{dados['sl'][1]:.5f}</b></div>
+                <div class="alerta-operacao" style="border: 1px solid {cor}; background: {cor}15;">
+                    <b style="color:{cor}; font-size:1.2rem;">{dados['tipo']} ATIVA</b><br>
+                    <code style="color:#58a6ff;">ZONA: {dados['z_inf']:.5f} — {dados['z_sup']:.5f}</code>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; margin-top:10px; text-align:left;">
+                        <div><small style="color:#3fb950;">ALVOS (TP)</small><br><b>{dados['tp'][0]:.5f}</b><br><b>{dados['tp'][1]:.5f}</b></div>
+                        <div><small style="color:#f85149;">RISCOS (SL)</small><br><b>{dados['sl'][0]:.5f}</b><br><b>{dados['sl'][1]:.5f}</b></div>
                     </div>
                 </div>
             """, unsafe_allow_html=True)
         else:
-            st.markdown("<div style='text-align:center; padding:10px; font-size:0.7rem; color:#444;'>VARREDURA INSTITUCIONAL ATIVA...</div>", unsafe_allow_html=True)
-        
+            st.markdown("<div style='text-align:center; padding:15px; color:#30363d; font-size:0.75rem;'>VARREDURA DE LIQUIDEZ ATIVA...</div>", unsafe_allow_html=True)
+            
         st.markdown("</div>", unsafe_allow_html=True)
