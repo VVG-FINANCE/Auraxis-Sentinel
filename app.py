@@ -1,50 +1,45 @@
 import streamlit as st
 import time
-from engine import obter_dados_hifi, motor_neural_v15
-from interface import aplicar_estilo_v15, desenhar_radar
+from engine import obter_dados_institucionais, motor_auraxis_v15
+from interface import configurar_layout, exibir_modulo
 
-st.set_page_config(page_title="AURAXIS V15", layout="wide")
-aplicar_estilo_v15()
+st.set_page_config(page_title="AURAXIS V15 SOBERANO", layout="wide")
+configurar_layout()
 
-# Placeholder para atualização em tempo real
-espaco_vivo = st.empty()
+# Espaço de atualização dinâmica
+cockpit = st.empty()
 
 while True:
-    with espaco_vivo.container():
-        df, pips = obter_dados_hifi()
+    with cockpit.container():
+        df, pips = obter_dados_institucionais()
         
         if not df.empty:
-            preco_atual = float(df['close'].iloc[-1])
-            cor_pips = "#3fb950" if pips >= 0 else "#f85149"
+            preco = float(df['close'].iloc[-1])
+            cor_v = "#3fb950" if pips >= 0 else "#f85149"
             
-            # Painel Superior
+            # HUD Superior de Impacto
             st.markdown(f"""
-                <div style="text-align:center; background:#0d1117; padding:20px; border-radius:15px; border:1px solid #30363d;">
-                    <h1 style="font-size:4rem; margin:0; color:white;">{preco_atual:.5f}</h1>
-                    <b style="color:{cor_pips}; font-size:1.2rem;">
-                        {"▲" if pips >= 0 else "▼"} {abs(pips):.1f} PIPS HOJE
-                    </b>
+                <div style="text-align:center; background:#0d1117; padding:25px; border-radius:15px; border-bottom: 4px solid #58a6ff;">
+                    <h1 style="font-size:4.5rem; margin:0; letter-spacing:-2px;">{preco:.5f}</h1>
+                    <b style="color:{cor_v}; font-size:1.3rem;">{"▲" if pips>=0 else "▼"} {abs(pips):.1f} PIPS HOJE</b>
                 </div>
+                <br>
             """, unsafe_allow_html=True)
             
-            st.write("")
-            
-            # Colunas para os 4 Tipos
             col1, col2, col3, col4 = st.columns(4)
+            perfis = ["SCALPER", "DAY TRADE", "SWING", "POSITION"]
+            espacos = [col1, col2, col3, col4]
             
-            tempos = ["SCALPER", "DAY TRADE", "SWING", "POSITION"]
-            cols = [col1, col2, col3, col4]
+            for p, col in zip(perfis, espacos):
+                with col:
+                    dados_m = motor_auraxis_v15(df, p.split()[0])
+                    # Limpeza automática se o preço romper a zona de proteção
+                    if dados_m['tipo'] and not (dados_m['z_inf'] <= preco <= dados_m['z_sup']):
+                        dados_m['tipo'] = None
+                    exibir_modulo(p, dados_m)
             
-            for t, c in zip(tempos, cols):
-                with c:
-                    dados = motor_neural_v15(df, t.split()[0])
-                    # Lógica de sumir se romper a zona
-                    if dados['tipo'] and not (dados['z_inf'] <= preco_atual <= dados['z_sup']):
-                        dados['tipo'] = None
-                    desenhar_radar(t, dados)
-                    
-            st.caption("Sistema Auraxis V15 // Leitura Biométrica de Candle // Atualização: 5s")
+            st.caption("⚙️ MOTOR NEURAL V15: Z-Score Adaptativo + Amostragem Fractal + Biometria de Candle")
         else:
-            st.error("Conectando ao Fluxo de Dados...")
+            st.warning("⚠️ Aguardando conexão com os servidores de liquidez...")
             
     time.sleep(5)
