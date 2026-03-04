@@ -5,68 +5,59 @@ from sklearn.preprocessing import StandardScaler
 
 def obter_dados_institucionais(ticker="EURUSD=X"):
     try:
-        # Puxa dados com folga para cálculo estatístico
+        # Puxa dados para análise de desvio padrão
         data = yf.download(ticker, period="1mo", interval="15m", progress=False)
         if data.empty: return pd.DataFrame(), 0.0
         
         preco_atual = float(data['Close'].iloc[-1])
-        # Cálculo de Pips diários
-        dados_diarios = yf.download(ticker, period="2d", interval="1d", progress=False)
-        preco_ontem = float(dados_diarios['Close'].iloc[-2])
-        pips_hoje = (preco_atual - preco_ontem) * 10000
+        # Variação diária em PIPS
+        p_ontem = float(yf.download(ticker, period="2d", interval="1d", progress=False)['Close'].iloc[-2])
+        pips_hoje = (preco_atual - p_ontem) * 10000
         
         df = data[['Open', 'High', 'Low', 'Close']].copy()
         df.columns = ['open', 'high', 'low', 'close']
         return df, float(pips_hoje)
-    except Exception as e:
+    except:
         return pd.DataFrame(), 0.0
 
 def motor_auraxis_v15(df, modo="DAY"):
-    # Parâmetros de Musculatura por Perfil
+    # Janelas de amostragem institucional
     janelas = {"SCALPER": 15, "DAY": 35, "SWING": 75, "POSITION": 180}
     p = janelas[modo]
     window = df.tail(p).copy()
-    preco_atual = float(window['close'].iloc[-1])
+    p_atual = float(window['close'].iloc[-1])
     
-    # --- BIOMETRIA DO CANDLE (Leitura Visual de Direção e Força) ---
-    abertura, maxima, minima, fechamento = window['open'].iloc[-1], window['high'].iloc[-1], window['low'].iloc[-1], window['close'].iloc[-1]
-    corpo = fechamento - abertura
-    faixa_total = (maxima - minima) + 1e-9
+    # --- BIOMETRIA (Corpo vs Pavio) ---
+    ab, mx, mn, fe = window['open'].iloc[-1], window['high'].iloc[-1], window['low'].iloc[-1], window['close'].iloc[-1]
+    corpo = fe - ab
+    faixa = (mx - mn) + 1e-9
     
-    # Indicador de Direção (Corpo) e Pressão (Pavio/Rejeição)
-    direcao_v = (corpo / faixa_total) * 100
-    pavio_superior = maxima - max(abertura, fechamento)
-    pavio_inferior = min(abertura, fechamento) - minima
-    pressao_v = ((pavio_superior + pavio_inferior) / faixa_total) * 100
+    direcao_v = (corpo / faixa) * 100
+    pressao_v = ((mx - max(ab, fe)) + (min(ab, fe) - mn)) / faixa * 100
 
-    # --- ENGENHARIA ESTATÍSTICA (Scikit-Learn) ---
+    # --- MUSCULATURA ESTATÍSTICA (Z-Score) ---
     precos = window['close'].values.reshape(-1, 1)
     scaler = StandardScaler()
     z_scores = scaler.fit_transform(precos)
     z_atual = z_scores[-1][0]
     
-    # Score de Prontidão Institucional (0 a 100%)
-    score_prontidao = min(abs(z_atual) / 2.0, 1.0) * 100
-    
-    # Cálculo de Alvos e Riscos via ATR
+    # Prontidão de 0 a 100%
+    prontidao = min(abs(z_atual) / 2.0, 1.0) * 100
     atr = (window['high'] - window['low']).mean()
-    zona_inf, zona_sup = preco_atual - (atr * 0.25), preco_atual + (atr * 0.25)
 
     res = {
-        "tipo": None, "score": score_prontidao, "direcao": direcao_v, 
-        "pressao": pressao_v, "z_inf": zona_inf, "z_sup": zona_sup
+        "tipo": None, "score": prontidao, "direcao": direcao_v, 
+        "pressao": pressao_v, "z_inf": p_atual - (atr * 0.3), "z_sup": p_atual + (atr * 0.3)
     }
 
-    # Lógica de Gatilho (Confiança Neural > 1.5 desvios)
-    if abs(z_atual) > 1.5 and (abs(corpo)/faixa_total) > 0.3:
-        tipo = "COMPRA" if z_atual > 0 else "VENDA"
-        direcao_m = 1 if tipo == "COMPRA" else -1
-        multiplicador = {"SCALPER": 1.3, "DAY": 2.6, "SWING": 4.2, "POSITION": 6.5}[modo]
+    # Gatilho de Operação
+    if abs(z_atual) > 1.6 and (abs(corpo)/faixa) > 0.3:
+        res["tipo"] = "COMPRA" if z_atual > 0 else "VENDA"
+        m = 1 if res["tipo"] == "COMPRA" else -1
+        mult = {"SCALPER": 1.4, "DAY": 2.7, "SWING": 4.5, "POSITION": 7.0}[modo]
         
         res.update({
-            "tipo": tipo,
-            "tp": [preco_atual + (atr * multiplicador * direcao_m), preco_atual + (atr * multiplicador * 1.5 * direcao_m)],
-            "sl": [preco_atual - (atr * multiplicador * 0.8 * direcao_m), preco_atual - (atr * multiplicador * 1.2 * direcao_m)]
+            "tp": [p_atual + (atr * mult * m), p_atual + (atr * mult * 1.5 * m)],
+            "sl": [p_atual - (atr * mult * 0.8 * m), p_atual - (atr * mult * 1.2 * m)]
         })
-    
     return res
