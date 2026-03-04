@@ -6,8 +6,12 @@ from sklearn.preprocessing import StandardScaler
 def obter_dados_institucionais(ticker="EURUSD=X"):
     try:
         # Puxa dados para análise de desvio padrão
-        data = yf.download(ticker, period="1mo", interval="15m", progress=False)
-        if data.empty: return pd.DataFrame(), 0.0
+p_atual = float(data['Close'].iloc[-1].iloc[0]) if isinstance(data['Close'].iloc[-1], pd.Series) else float(data['Close'].iloc[-1])
+
+# E para o preço de ontem:
+dados_ontem = yf.download(ticker, period="2d", interval="1d", progress=False)
+p_ontem = float(dados_ontem['Close'].iloc[-2])
+
         
         preco_atual = float(data['Close'].iloc[-1])
         # Variação diária em PIPS
