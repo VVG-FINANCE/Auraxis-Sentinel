@@ -1,6 +1,6 @@
-streamlit
-pandas
-numpy
+streamlit==1.55.0
+pandas==2.3.3
+numpy==2.4.2
 yfinance
 scipy
 scikit-learn
