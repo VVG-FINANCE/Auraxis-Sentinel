@@ -1,44 +1,32 @@
 import streamlit as st
 import time
 from engine import obter_dados_institucionais, motor_auraxis_v15
-from interface import aplicar_estilo_soberano, renderizar_painel
+from interface import configurar_tema, exibir_radar
 
-st.set_page_config(page_title="AURAXIS SOBERANO", layout="wide")
-aplicar_estilo_soberano()
-
-placeholder = st.empty()
+st.set_page_config(page_title="AURAXIS V15", layout="wide")
+configurar_tema()
+cockpit = st.empty()
 
 while True:
-    with placeholder.container():
+    with cockpit.container():
         df, pips = obter_dados_institucionais()
-        
         if not df.empty:
             preco = float(df['close'].iloc[-1])
-            cor_p = "#3fb950" if pips >= 0 else "#f85149"
+            cor_v = "#3fb950" if pips >= 0 else "#f85149"
             
-            # Painel Superior Traduzido
             st.markdown(f"""
-                <div style="text-align:center; padding:30px; background:#0d1117; border-radius:15px; border-bottom: 5px solid #58a6ff;">
-                    <h1 style="font-size:4.5rem; margin:0;">{preco:.5f}</h1>
-                    <b style="color:{cor_p}; font-size:1.4rem;">{"▲" if pips>=0 else "▼"} {abs(pips):.1f} PIPS HOJE</b>
-                </div>
-                <br>
+                <div style="text-align:center; background:#0d1117; padding:25px; border-radius:15px;">
+                    <h1 style="font-size:4rem; margin:0;">{preco:.5f}</h1>
+                    <b style="color:{cor_v}; font-size:1.3rem;">{"▲" if pips>=0 else "▼"} {abs(pips):.1f} PIPS HOJE</b>
+                </div><br>
             """, unsafe_allow_html=True)
             
-            c1, c2, c3, c4 = st.columns(4)
+            col1, col2, col3, col4 = st.columns(4)
             modos = ["SCALPER", "DAY TRADE", "SWING", "POSITION"]
-            colunas = [c1, c2, c3, c4]
-            
-            for m, col in zip(modos, colunas):
-                with col:
-                    dados = motor_auraxis_v15(df, m.split()[0])
-                    # Lógica para limpar sinal se o preço sair da zona
-                    if dados['tipo'] and not (dados['z_inf'] <= preco <= dados['z_sup']):
-                        dados['tipo'] = None
-                    renderizar_painel(m, dados)
-            
-            st.caption("⚙️ MOTOR V15: Musculatura Neural Ativa // Ciclo 5s // Tradução Nativa")
+            for m, c in zip(modos, col1, col2, col3, col4):
+                with c:
+                    dados_m = motor_auraxis_v15(df, m.split()[0])
+                    exibir_radar(m, dados_m)
         else:
-            st.error("Conectando ao fluxo de dados...")
-            
+            st.error("Conectando ao fluxo de liquidez...")
     time.sleep(5)
